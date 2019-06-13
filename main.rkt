@@ -16,14 +16,52 @@
 ; ----------
 ; settings
 (define SIZE 50)
-(define WORLD_SIZE (* SIZE 9))
+(define WORLD_SIZE (* SIZE 10))
 
 
 (define (_truePosition factor)(+ (/ SIZE 2) (* factor SIZE)))
 
-; ---------
+(define (_get_free_pos objs)
+  (define local_pos (list (random 9) (random 9)))
+  (cond
+    [(equal? (_get_obj_by_pos local_pos OBJECTS) #f) local_pos]
+    [else _get_free_pos objs]
+    )
+  )
 
-(define WORLD_SCENE (empty-scene WORLD_SIZE WORLD_SIZE))
+; ---------
+; Level
+
+(define is_started #f)
+
+(define LEVEL 15)
+(define _level_mov 0)
+
+(define (add_obj obj_name start end)
+  (cond
+    [(not (equal? start end))
+     (cond
+       [(equal? obj_name "healths")
+        (set! OBJECTS (append OBJECTS (list (replace_list (list-ref _healths (random 2)) 1 (_get_free_pos OBJECTS)))))
+        ]
+       [(equal? obj_name "zombies")
+        (set! OBJECTS (append OBJECTS (list (replace_list (list-ref _zombies (random 2)) 1 (_get_free_pos OBJECTS)))))
+        ]
+       )
+     (add_obj obj_name (+ start 1) end)
+     ]
+    )
+  )
+
+(define (add_zombies level)
+  (if (> (ceiling (/ level 5)) 5)(add_obj "zombies" 0 5)(add_obj "zombies" 0 (ceiling (/ level 5))))
+  )
+(define (add_healths level)
+  (if (> (ceiling (/ level 3)) 10)(add_obj "healths" 0 10)(add_obj "healths" 0 (ceiling (/ level 5))))
+  )
+
+; --------
+(define WORLD_SCENE (empty-scene (- WORLD_SIZE SIZE) WORLD_SIZE))
 
 (define _soil_images (list
                       (bitmap "Assets/soil.png")
@@ -35,22 +73,37 @@
                 (bitmap "Assets/Rogue.png")
                 (bitmap "Assets/zombie.png")
                 (bitmap "Assets/zombie2.png")
+                (bitmap "Assets/exit.png")
+                (bitmap "Assets/apples.png")
+                (bitmap "Assets/coke.png")
                 ))
+(define _zombies (list
+                  (list "Zombie" (list 0 0) (list-ref IMAGES 2) 5)
+                  (list "Zombie" (list 8 8) (list-ref IMAGES 3) 10)
+                  ))
+(define _healths (list
+                  (list "Apple" (list 4 4) (list-ref IMAGES 5) 10)
+                  (list "Coke" (list 3 6) (list-ref IMAGES 6) 20)
+                  ))
+(define _static_obj
+  (list
+   (list "Player" (list 8 0) (list-ref IMAGES 1) 10);last val is start life, other obj don't have it
+   (list "Exit" (list 0 8) (list-ref IMAGES 4)); exit
+   )
+  )
 
-(define OBJECTS (list
-               (list "Player" (list 4 4) (list-ref IMAGES 1) 10);last val is start life, other obj don't have it
-               (list "Zombie" (list 0 0) (list-ref IMAGES 2) 5)
-               (list "Zombie" (list 8 8) (list-ref IMAGES 3) 5)
-               ))
+(define OBJECTS _static_obj)
 
 (define _PLAYER_ID 0)
+
+(define (_get_obj id)(list-ref OBJECTS id))
 
 (define (_obj_name obj)(list-ref obj 0))
 (define (_obj_pos obj)(list-ref obj 1))
 (define (_obj_pos_x obj)(list-ref (_obj_pos obj) 1))
 (define (_obj_pos_y obj)(list-ref (_obj_pos obj) 0))
 
-(define (_get_obj id)(list-ref OBJECTS id))
+
 
 (define (_get_obj_by_name name lst)(cond
                                  [(or (null? lst)(null? (car lst))) #f]
@@ -109,7 +162,19 @@
                               ))
 
 (define (DRAW_WORLD frame)
-  (set! WORLD_SCENE (empty-scene WORLD_SIZE WORLD_SIZE))(_fill_scene 0 0)
+  (cond
+    [(equal? is_started #f)
+     (add_zombies LEVEL)
+     (add_healths LEVEL)
+     (set! is_started #t)
+     ]
+    )
+  (set! WORLD_SCENE
+        (empty-scene (- WORLD_SIZE SIZE) WORLD_SIZE)
+        )
+  (_put_image_to_scene 9 1 (text (string-append "Level : " (number->string LEVEL)) 24 "Black"))
+  (_put_image_to_scene 9 4 (text (string-append "Health : " (number->string (list-ref (_get_obj 0) 3))) 24 "Red"))
+  (_fill_scene 0 0)
   )
 ; ----------
 
@@ -160,32 +225,74 @@
 (define (_zombies_turn lst id)(cond
                                  [(null? lst) #t]
                                  [(equal? (_obj_name (car lst)) "Zombie")
-                                  (_move (_obj_pos (car lst)) (_obj_pos (list-ref OBJECTS 0)) id)(_zombies_turn (cdr lst) (+ id 1))
+                                  (_move (_obj_pos (car lst)) (_obj_pos (list-ref OBJECTS 0)) id)
+                                  (_zombie_attack id 0)
+                                  (_zombies_turn (cdr lst) (+ id 1))
                                   ]
                                  [else (_zombies_turn (cdr lst) (+ id 1))]
                                  ))
 
-
-
-
-
-
-
-
-
-
 (define (move_obj obj to)(cond
-                           [(key=? to "right") (go_right 0)(_zombies_turn OBJECTS 0)]
-                           [(key=? to "left") (go_left 0)(_zombies_turn OBJECTS 0)]
-                           [(key=? to "up") (go_up 0)(_zombies_turn OBJECTS 0)]
-                           [(key=? to "down") (go_down 0)(_zombies_turn OBJECTS 0)]
+                           [(key=? to "right")
+                            (cond
+                              [(check-border (_get_obj 0) to)(go_right 0)(_zombies_turn OBJECTS 0)]
+                              [else (_zombies_turn OBJECTS 0)]
+                              )
+                            ]
+                           [(key=? to "left")
+                            (cond
+                              [(check-border (_get_obj 0) to)(go_left 0)(_zombies_turn OBJECTS 0)]
+                              [else (_zombies_turn OBJECTS 0)]
+                              )
+                            ]
+                           [(key=? to "up")
+                            (cond
+                              [(check-border (_get_obj 0) to)(go_up 0)(_zombies_turn OBJECTS 0)]
+                              [else (_zombies_turn OBJECTS 0)]
+                              )
+                            ]
+                           [(key=? to "down")
+                            (cond
+                              [(check-border (_get_obj 0) to)(go_down 0)(_zombies_turn OBJECTS 0)]
+                              [else (_zombies_turn OBJECTS 0)]
+                              )
+                            ]
                            ))
 
 
+; in_game functions
+
+
+(define (is_target_caught obj_id target_id)
+  (cond
+    [(and
+      (equal? (vector-diff (_obj_pos (_get_obj obj_id)) (_obj_pos (_get_obj target_id)) 0) 0)
+      (equal? (vector-diff (_obj_pos (_get_obj obj_id)) (_obj_pos (_get_obj target_id)) 1) 0)
+      ) #t]
+    [else #f]
+    ))
+(define (_decrease_player_heath zombie)
+  (_obj_replace 0
+                (append
+                 (take (_get_obj 0) 3)
+                 (list (- (list-ref (_get_obj 0) 3) (list-ref zombie 3)))
+                 )
+                )
+  (set! OBJECTS (remove zombie OBJECTS))
+  )
+(define (_zombie_attack zom_id target_id)
+  (cond
+    [
+     (is_target_caught zom_id target_id)
+     (_decrease_player_heath (_get_obj zom_id))
+     ]
+    )
+  )
+; -------------
 
 ; --------
 (big-bang 0
           [on-draw DRAW_WORLD]
           [on-release move_obj]
 )
-(list-ref OBJECTS 0)
+OBJECTS
