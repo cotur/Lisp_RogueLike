@@ -53,10 +53,10 @@
   )
 
 (define (add_zombies level)
-  (if (> (ceiling (/ level 5)) 5)(add_obj "zombies" 0 5)(add_obj "zombies" 0 (ceiling (/ level 5))))
+  (if (> (ceiling (/ level 3)) 5)(add_obj "zombies" 0 5)(add_obj "zombies" 0 (ceiling (/ level 3))))
   )
 (define (add_healths level)
-  (if (> (ceiling (/ level 5)) 5)(add_obj "healths" 0 10)(add_obj "healths" 0 (ceiling (/ level 5))))
+  (if (> (ceiling (/ level 6)) 4)(add_obj "healths" 0 10)(add_obj "healths" 0 (ceiling (/ level 6))))
   )
 
 ; --------
