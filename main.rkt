@@ -3,7 +3,6 @@
 (require 2htdp/universe)
 
 
-
 ; functions
 
 (define (replace_list list n elem)
@@ -25,7 +24,7 @@
   (define local_pos (list (random 9) (random 9)))
   (cond
     [(equal? (_get_obj_by_pos local_pos OBJECTS) #f) local_pos]
-    [else _get_free_pos objs]
+    [else (_get_free_pos objs)]
     )
   )
 
@@ -34,7 +33,7 @@
 
 (define is_started #f)
 
-(define LEVEL 15)
+(define LEVEL 1)
 (define _level_mov 0)
 
 (define (add_obj obj_name start end)
@@ -77,17 +76,20 @@
                 (bitmap "Assets/apples.png")
                 (bitmap "Assets/coke.png")
                 ))
+
 (define _zombies (list
                   (list "Zombie" (list 0 0) (list-ref IMAGES 2) 5)
                   (list "Zombie" (list 8 8) (list-ref IMAGES 3) 10)
                   ))
+
 (define _healths (list
                   (list "Apple" (list 4 4) (list-ref IMAGES 5) 10)
                   (list "Coke" (list 3 6) (list-ref IMAGES 6) 20)
                   ))
+
 (define _static_obj
   (list
-   (list "Player" (list 8 0) (list-ref IMAGES 1) 10);last val is start life, other obj don't have it
+   (list "Player" (list 8 0) (list-ref IMAGES 1) 30);last val is start life, other obj don't have it
    (list "Exit" (list 0 8) (list-ref IMAGES 4)); exit
    )
   )
@@ -97,7 +99,7 @@
 (define _PLAYER_ID 0)
 
 (define (_get_obj id)(list-ref OBJECTS id))
-
+(define (_get_obj_pos id)(_obj_pos (_get_obj id)))
 (define (_obj_name obj)(list-ref obj 0))
 (define (_obj_pos obj)(list-ref obj 1))
 (define (_obj_pos_x obj)(list-ref (_obj_pos obj) 1))
@@ -172,8 +174,8 @@
   (set! WORLD_SCENE
         (empty-scene (- WORLD_SIZE SIZE) WORLD_SIZE)
         )
-  (_put_image_to_scene 9 1 (text (string-append "Level : " (number->string LEVEL)) 24 "Black"))
-  (_put_image_to_scene 9 4 (text (string-append "Health : " (number->string (list-ref (_get_obj 0) 3))) 24 "Red"))
+  (_put_image_to_scene 9 0.6 (text (string-append "Level : " (number->string LEVEL)) 24 "Black"))
+  (_put_image_to_scene 9 3 (text (string-append "Health : " (number->string (list-ref (_get_obj 0) 3))) 24 "Red"))
   (_fill_scene 0 0)
   )
 ; ----------
@@ -197,28 +199,31 @@
   )
 
 (define (_find_my_path my_pos target_pos)
+  (define y_diff (abs (vector-diff my_pos target_pos 0)))
+  (define x_diff (abs (vector-diff my_pos target_pos 1)))
   (cond
-    [(>= (abs (vector-diff my_pos target_pos 0)) (abs (vector-diff my_pos target_pos 1)) )
+    [(>  y_diff x_diff )
      (cond
        [(< (vector-diff my_pos target_pos 0) 0) "down"]
        [else "up"]
        )
      ]; Y axis
-    [else
+    [(< y_diff x_diff )
      (cond
        [(< (vector-diff my_pos target_pos 1) 0) "right"]
        [else "left"]
        )
      ]; X axis
+    [else "no"]
     )
   )
 
 (define (_move my_pos target_pos id)
   (cond
-    [(equal? (_find_my_path my_pos target_pos) "right") (go_right id)]
-    [(equal? (_find_my_path my_pos target_pos) "left") (go_left id)]
-    [(equal? (_find_my_path my_pos target_pos) "up") (go_up id)]
-    [(equal? (_find_my_path my_pos target_pos) "down") (go_down id)]
+    [(equal? (_find_my_path my_pos target_pos) "right") (cond [(check-border (_get_obj id) "right")(go_right id)])]
+    [(equal? (_find_my_path my_pos target_pos) "left") (cond [(check-border (_get_obj id) "left")(go_left id)])]
+    [(equal? (_find_my_path my_pos target_pos) "up") (cond [(check-border (_get_obj id) "up")(go_up id)])]
+    [(equal? (_find_my_path my_pos target_pos) "down") (cond [(check-border (_get_obj id) "down")(go_down id)])]
     )
   )
 
@@ -232,35 +237,70 @@
                                  [else (_zombies_turn (cdr lst) (+ id 1))]
                                  ))
 
-(define (move_obj obj to)(cond
-                           [(key=? to "right")
-                            (cond
-                              [(check-border (_get_obj 0) to)(go_right 0)(_zombies_turn OBJECTS 0)]
-                              [else (_zombies_turn OBJECTS 0)]
-                              )
-                            ]
-                           [(key=? to "left")
-                            (cond
-                              [(check-border (_get_obj 0) to)(go_left 0)(_zombies_turn OBJECTS 0)]
-                              [else (_zombies_turn OBJECTS 0)]
-                              )
-                            ]
-                           [(key=? to "up")
-                            (cond
-                              [(check-border (_get_obj 0) to)(go_up 0)(_zombies_turn OBJECTS 0)]
-                              [else (_zombies_turn OBJECTS 0)]
-                              )
-                            ]
-                           [(key=? to "down")
-                            (cond
-                              [(check-border (_get_obj 0) to)(go_down 0)(_zombies_turn OBJECTS 0)]
-                              [else (_zombies_turn OBJECTS 0)]
-                              )
-                            ]
-                           ))
+
+
+(define (move_obj obj to)
+  (define _player (_get_obj 0))
+  (cond
+    [(key=? to "right")
+     (cond
+       [(check-border _player to)(go_right 0)]
+       )
+     ]
+    [(key=? to "left")
+     (cond
+       [(check-border _player to)(go_left 0)]
+       )
+     ]
+    [(key=? to "up")
+     (cond
+       [(check-border _player to)(go_up 0)]
+       )
+     ]
+    [(key=? to "down")
+     (cond
+       [(check-border _player to)(go_down 0)]
+       )
+     ]
+    )
+  (cond
+    [(or (key=? to "right")(key=? to "left")(key=? to "up")(key=? to "down"))
+     (_zombies_turn OBJECTS 0)
+     ])
+  (check_obj (_get_obj_pos 0))
+  )
 
 
 ; in_game functions
+
+(define (check_obj pos)
+  (define temp (_get_obj_by_pos pos (take-right OBJECTS (- (length OBJECTS) 1))))
+  (cond
+    [(not (equal? temp #f))
+     (cond
+       [(equal? (list-ref temp 0) "Zombie")
+        (change_player_health temp -)
+        ]
+       [(or (equal? (list-ref temp 0) "Apple")(equal? (list-ref temp 0) "Coke"))
+        (change_player_health temp +)
+        ]
+       [(equal? (list-ref temp 0) "Exit")
+        (_LEVEL_UP LEVEL)
+        ]
+       )
+     ]
+    )
+  )
+
+(define (change_player_health obj proccess)
+  (_obj_replace 0
+                (append
+                 (take (_get_obj 0) 3)
+                 (list (proccess (list-ref (_get_obj 0) 3) (list-ref obj 3)))
+                 )
+                )
+  (set! OBJECTS (remove obj OBJECTS))
+  )
 
 
 (define (is_target_caught obj_id target_id)
@@ -271,28 +311,34 @@
       ) #t]
     [else #f]
     ))
-(define (_decrease_player_heath zombie)
-  (_obj_replace 0
-                (append
-                 (take (_get_obj 0) 3)
-                 (list (- (list-ref (_get_obj 0) 3) (list-ref zombie 3)))
-                 )
-                )
-  (set! OBJECTS (remove zombie OBJECTS))
-  )
+
+
 (define (_zombie_attack zom_id target_id)
   (cond
     [
      (is_target_caught zom_id target_id)
-     (_decrease_player_heath (_get_obj zom_id))
+     (change_player_health (_get_obj zom_id) -)
      ]
     )
   )
 ; -------------
+
+(define (_LEVEL_UP current_level)
+  (set! LEVEL (+ current_level 1))
+  (set! OBJECTS (take OBJECTS 2))
+  (_obj_pos_change 0 (list 8 0))
+  (_obj_replace 0
+                (append
+                 (take (_get_obj 0) 3)
+                 (list (+ (list-ref (_get_obj 0) 3) 10))
+                 )
+                )
+  (set! is_started #f)
+  
+  )
 
 ; --------
 (big-bang 0
           [on-draw DRAW_WORLD]
           [on-release move_obj]
 )
-OBJECTS
