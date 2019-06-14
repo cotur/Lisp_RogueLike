@@ -32,7 +32,7 @@
 ; Level
 
 (define is_started #f)
-
+(define _level_active #t)
 (define LEVEL 1)
 (define _level_mov 0)
 
@@ -56,7 +56,7 @@
   (if (> (ceiling (/ level 5)) 5)(add_obj "zombies" 0 5)(add_obj "zombies" 0 (ceiling (/ level 5))))
   )
 (define (add_healths level)
-  (if (> (ceiling (/ level 3)) 10)(add_obj "healths" 0 10)(add_obj "healths" 0 (ceiling (/ level 5))))
+  (if (> (ceiling (/ level 3)) 5)(add_obj "healths" 0 10)(add_obj "healths" 0 (ceiling (/ level 5))))
   )
 
 ; --------
@@ -75,6 +75,7 @@
                 (bitmap "Assets/exit.png")
                 (bitmap "Assets/apples.png")
                 (bitmap "Assets/coke.png")
+                (bitmap "Assets/rip.png")
                 ))
 
 (define _zombies (list
@@ -89,7 +90,7 @@
 
 (define _static_obj
   (list
-   (list "Player" (list 8 0) (list-ref IMAGES 1) 30);last val is start life, other obj don't have it
+   (list "Player" (list 8 0) (list-ref IMAGES 1) 10);last val is start life, other obj don't have it
    (list "Exit" (list 0 8) (list-ref IMAGES 4)); exit
    )
   )
@@ -127,6 +128,11 @@
 (define (_obj_pos_change obj_id new_pos)
   (_obj_replace obj_id
    (replace_list (list-ref OBJECTS obj_id) 1 new_pos)
+   )
+  )
+(define (_obj_img_change obj_id img)
+  (_obj_replace obj_id
+   (replace_list (list-ref OBJECTS obj_id) 2 img)
    )
   )
 ; scene
@@ -174,8 +180,15 @@
   (set! WORLD_SCENE
         (empty-scene (- WORLD_SIZE SIZE) WORLD_SIZE)
         )
-  (_put_image_to_scene 9 0.6 (text (string-append "Level : " (number->string LEVEL)) 24 "Black"))
-  (_put_image_to_scene 9 3 (text (string-append "Health : " (number->string (list-ref (_get_obj 0) 3))) 24 "Red"))
+  (cond
+    [(equal? _level_active  #f)
+     (_put_image_to_scene 9 2 (text "Failed..." 24 "Black"))
+     (_put_image_to_scene 9 5.4 (text (string-append "Your score: " (number->string LEVEL)) 24 "Black"))
+     ]
+    [else
+     (_put_image_to_scene 9 2 (text (string-append "Level : " (number->string LEVEL)) 24 "Black"))
+     (_put_image_to_scene 9 5.4 (text (string-append "Health : " (number->string (list-ref (_get_obj 0) 3))) 24 "Red"))
+     ])
   (_fill_scene 0 0)
   )
 ; ----------
@@ -238,8 +251,13 @@
                                  ))
 
 
-
 (define (move_obj obj to)
+  (cond
+    [(equal? _level_active #t)
+     (move_obj_check obj to)
+     ])
+  )
+(define (move_obj_check obj to)
   (define _player (_get_obj 0))
   (cond
     [(key=? to "right")
@@ -268,11 +286,19 @@
      (_zombies_turn OBJECTS 0)
      ])
   (check_obj (_get_obj_pos 0))
+  (check_health (_get_obj 0))
   )
 
 
 ; in_game functions
-
+(define (check_health player)
+  (cond
+    [(<= (list-ref player 3) 0)
+     (set! _level_active #f)
+     (_obj_img_change 0 (list-ref IMAGES 7))
+     ]
+    )
+  )
 (define (check_obj pos)
   (define temp (_get_obj_by_pos pos (take-right OBJECTS (- (length OBJECTS) 1))))
   (cond
