@@ -233,10 +233,44 @@
 
 (define (_move my_pos target_pos id)
   (cond
-    [(equal? (_find_my_path my_pos target_pos) "right") (cond [(check-border (_get_obj id) "right")(go_right id)])]
-    [(equal? (_find_my_path my_pos target_pos) "left") (cond [(check-border (_get_obj id) "left")(go_left id)])]
-    [(equal? (_find_my_path my_pos target_pos) "up") (cond [(check-border (_get_obj id) "up")(go_up id)])]
-    [(equal? (_find_my_path my_pos target_pos) "down") (cond [(check-border (_get_obj id) "down")(go_down id)])]
+    [(equal? (_find_my_path my_pos target_pos) "right") (cond [(check-border (_get_obj id) "right")
+                                                               (cond
+                                                                 [(i_f_f_z my_pos "right")(go_right id)])
+                                                               ])]
+    [(equal? (_find_my_path my_pos target_pos) "left") (cond [(check-border (_get_obj id) "left")
+                                                              (cond
+                                                                 [(i_f_f_z my_pos "left")(go_left id)])
+                                                              ])]
+    [(equal? (_find_my_path my_pos target_pos) "up") (cond [(check-border (_get_obj id) "up")
+                                                            (cond
+                                                                 [(i_f_f_z my_pos "up")(go_up id)])
+                                                            ])]
+    [(equal? (_find_my_path my_pos target_pos) "down") (cond [(check-border (_get_obj id) "down")
+                                                              (cond
+                                                                 [(i_f_f_z my_pos "down")(go_down id)])
+                                                              ])]
+    )
+  )
+(define (i_f_f_z pos to)
+  (cond
+    [(equal? to "right")
+     (if (is_free_for_zombie (list (list-ref pos 0) (+ (list-ref pos 1) 1))) #t #f)
+     ]
+    [(equal? to "left")
+     (if (is_free_for_zombie (list (list-ref pos 0) (- (list-ref pos 1) 1))) #t #f)
+     ]
+    [(equal? to "up")
+     (if (is_free_for_zombie (list (- (list-ref pos 0) 1) (list-ref pos 1) )) #t #f)
+     ]
+    [(equal? to "down")
+     (if (is_free_for_zombie (list (+ (list-ref pos 0) 1) (list-ref pos 1) )) #t #f)
+     ]
+    )
+  )
+(define (is_free_for_zombie pos)
+  (cond
+    [(or (equal? (_get_obj_by_pos pos OBJECTS) #f) (not (equal? "Zombie" (list-ref (_get_obj_by_pos pos OBJECTS) 0)))) #t]
+    [else #f]
     )
   )
 
